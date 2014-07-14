@@ -2,7 +2,7 @@
  * bootheader.h
  *
  * Copyright 2012 Emilio López <turl@tuxfamily.org>
- * Modified for ZTE GXI by Pavel Moravec, 2014 
+ * Modified for Dell Venue by Pavel Moravec, 2014 
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

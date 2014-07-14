@@ -2,7 +2,7 @@
  * unpack.c
  *
  * Copyright 2012 Emilio López <turl@tuxfamily.org>
- * Modified for ZTE GXI by Pavel Moravec, 2014 
+ * Modified for Dell Venue by Pavel Moravec, 2014 
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,6 +44,8 @@ int main(int argc, char *argv[])
 	uint32_t bzImageLen;
 	uint32_t ramdiskLen;
 	uint32_t missing;
+	int32_t offset=0; //Bootloader end offset in header
+
 	char buf[BUFSIZ];
 	struct bootheader tmphdr;
 	size_t size;
@@ -61,7 +63,7 @@ int main(int argc, char *argv[])
 	if (!forigin || !bzImage || !framdisk)
 		ERROR("ERROR: failed to open origin or output images\n");
 
-	if (fread(&tmphdr, HEAD_LEN, 1, forigin) != 1)
+	if (fread(&tmphdr, sizeof(tmphdr), 1, forigin) != 1)
 		ERROR("ERROR: failed to read file header\n");
 	checkBootHeader(&tmphdr);
 	
@@ -83,8 +85,11 @@ int main(int argc, char *argv[])
 	else
 		ramdiskLen = le32toh(ramdiskLen);
 
+	/* Fix different bootloader sizes */
+	offset = bootloader_end(&tmphdr);
+
 	/* Copy bzImage */
-	if (fseek(forigin, sizeof(struct bootheader), SEEK_SET) == -1)
+	if (fseek(forigin, sizeof(struct bootheader)-offset, SEEK_SET) == -1)
 		ERROR("ERROR: failed to seek when copying bzImage\n");
 
 	missing = bzImageLen;
@@ -97,7 +102,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Copy ramdisk */
-	if (fseek(forigin, (sizeof(struct bootheader)+bzImageLen), SEEK_SET) == -1)
+	if (fseek(forigin, (sizeof(struct bootheader)+bzImageLen-offset), SEEK_SET) == -1)
 		ERROR("ERROR: failed to seek when copying ramdisk\n");
 
 	missing = ramdiskLen;

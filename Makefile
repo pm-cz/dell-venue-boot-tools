@@ -5,26 +5,26 @@ DUMPFLAGS=-dead-strip -dead_strip_dylibs -static
 
 .PHONY: clean
 
-all: gxi_pack gxi_unpack gxi_dump_images_pc gxi_dump_images_s
+all: dvenue_unpack dvenue_dump_images_pc dvenue_dump_images_s #dvenue_pack 
 
 clean:
-	rm -f *.o gxi_pack gxi_unpack gxi_dump_images gxi_dump_images_s gxi_dump_images_pc
+	rm -f *.o dvenue_unpack dvenue_dump_images dvenue_dump_images_s dvenue_dump_images_pc dvenue_pack 
 
-gxi_pack: gxi_pack.o
+dvenue_pack: dvenue_pack.o
 	$(CC) -o $@ $< $(CFLAGS)
 
-gxi_unpack: gxi_unpack.o
+dvenue_unpack: dvenue_unpack.o
 	$(CC) -o $@ $< $(CFLAGS) 
 
-gxi_dump_images_pc.o: gxi_dump_images.c
+dvenue_dump_images_pc.o: dvenue_dump_images.c
 	$(CC) -c -o $@ $< $(CFLAGS) -DPC
 
-gxi_dump_images_s: gxi_dump_images.o
+dvenue_dump_images_s: dvenue_dump_images.o
 	$(CC) -o $@ $< $(CFLAGS) $(DUMPFLAGS)
 	strip $@
 
-gxi_dump_images: gxi_dump_images.o
+dvenue_dump_images: dvenue_dump_images.o
 	$(CC) -o $@ $< $(CFLAGS) 
 
-gxi_dump_images_pc: gxi_dump_images_pc.o
+dvenue_dump_images_pc: dvenue_dump_images_pc.o
 	$(CC) -o $@ $< $(CFLAGS) 

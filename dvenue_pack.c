@@ -2,7 +2,7 @@
  * pack.c
  *
  * Copyright 2012 Emilio López <turl@tuxfamily.org>
- * Modified for ZTE GXI by Pavel Moravec, 2014 
+ * Modified for Dell Venue by Pavel Moravec, 2014 
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
 	char buf[BUFSIZ];
 	size_t size;
 	struct bootheader *file;
+	int32_t offset	= 0;
 
 	if (argc != 5 && argc != 6)
 		ERROR("Usage: %s <valid image> <bzImage> <ramdisk> <output> [type]\nwhere type: is r - recovery, b - boot, f - fastboot\n", argv[0]);
@@ -105,8 +106,10 @@ int main(int argc, char *argv[])
 	} else
 		ERROR("ERROR reading ramdisk\n");
 
+	/* Fix different bootloader sizes */
+	offset = -bootloader_end(file);
 	/* Calculate padding */
-	tmp2+= sizeof(struct bootheader);
+	tmp2+= sizeof(struct bootheader) + offset;
 	if (tmp2 % SECTOR) { 
 		pad = SECTOR - (tmp2 % SECTOR);
 		tmp2 += pad;
@@ -115,11 +118,14 @@ int main(int argc, char *argv[])
 	/* Update OS header */
 	file->sectors_t = htole32(tmp2 / 512 - 1);
 	if (img_type != 0) { file->image_type = img_type; }
-    file->xor56 = calc_sum(file);
+	file->xor56 = calc_sum(file);
 
 	/* Write the patched bootstub to the new image */
 	if (fwrite(file, sizeof(struct bootheader), 1, foutput) != 1)
 		ERROR("ERROR writing image\n");
+
+	if (fseek(foutput, offset, SEEK_CUR) == -1)
+		ERROR("ERROR: could not seek %i bytes in output file!\n", offset);
 
 	/* Then copy the new bzImage */
 	while ((size = fread(buf, 1, BUFSIZ, fbzImage))) {

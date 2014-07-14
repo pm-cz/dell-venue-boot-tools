@@ -2,7 +2,7 @@
  * read_data.c
  *
  * Copyright 2013 Pavel Moravec
- * Modified for ZTE GXI by Pavel Moravec, 2014 
+ * Modified for Dell Venue by Pavel Moravec, 2014 
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@
 #define ORIGIN "/dev/block/mmcblk0"
 #endif
 
-typedef enum {A_NONE=0, A_BOOT=1, A_REC=2, A_FAST=4, A_INFO=8, A_HELP = 0x10, A_ALL=0xf} e_args;
+typedef enum {A_NONE=0, A_BOOT=1, A_REC=2, A_FAST=4, A_INFO=8, A_HELP = 0x10, A_UNKNOWN=0x20, A_ALL=0xf} e_args;
 
 char * odir = ".";
 char *origin=ORIGIN;
@@ -126,6 +126,9 @@ e_args parse_arg(char *arg1, char *arg2) {
          case 'r': 
 		curr |= A_REC;
 		break;
+         case 'u': 
+		curr |= A_UNKNOWN;
+		break;
          case 'a': 
 		curr |= A_ALL;
 		break;
@@ -154,7 +157,7 @@ e_args parse_arg(char *arg1, char *arg2) {
 
 void checkHeader(mainheader* mbr)
 {
-   if (memcmp(mbr->hdr,IMAGE_HDR, sizeof(mbr->hdr))) ERROR("ERROR: Invalid Image header - is it really ZTE GXI?\n");
+   if (memcmp(mbr->hdr,IMAGE_HDR, sizeof(mbr->hdr))) ERROR("ERROR: Invalid Image header - is it really Dell Venue?\n");
 }
 
 void checkEntry(hdr_ent* e)
@@ -184,7 +187,7 @@ char is_enabled(uint32_t image_t) {
     case T_FASTBOOT:
 	return (args & A_FAST);
     default:
-        return 0;
+	return (args & A_UNKNOWN);
   }
 }
 
