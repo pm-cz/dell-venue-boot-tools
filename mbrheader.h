@@ -33,6 +33,8 @@
 #define MAGIC2							(0x01101000)
 #define SEPARATOR						(0x0)
 
+#define T_LOGO							(0x4)
+
 typedef struct {
 	uint8_t hdr[7];	    //Header: $OS$\0\0\1
 	uint8_t xor56;     //XOR of first 56 bytes without this one

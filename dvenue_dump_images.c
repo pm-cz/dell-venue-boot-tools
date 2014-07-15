@@ -2,7 +2,7 @@
  * read_data.c
  *
  * Copyright 2013 Pavel Moravec
- * Modified for Dell Venue by Pavel Moravec, 2014 
+ * Modified for Dell Venue by Pavel Moravec, 2014
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@
 #define ORIGIN "/dev/block/mmcblk0"
 #endif
 
-typedef enum {A_NONE=0, A_BOOT=1, A_REC=2, A_FAST=4, A_INFO=8, A_HELP = 0x10, A_UNKNOWN=0x20, A_ALL=0xf} e_args;
+typedef enum {A_NONE=0, A_BOOT=1, A_REC=2, A_FAST=4, A_INFO=8, A_HELP = 0x10, A_UNKNOWN=0x20, A_LOGO=0x40, A_ALL=0x4f} e_args;
 
 char * odir = ".";
 char *origin=ORIGIN;
@@ -93,16 +93,18 @@ unsigned char header512[] = {
 
 
 void usage(char *app) {
-  MESSAGE("Usage: %s {-v | -b | -r | -f | -a } [-2] [-i <input>] [-o <out dir>]\n", app);
+  MESSAGE("Usage: %s {-v | -b | -r | -f | -l | -u | -a } [-2] [-i <input>] [-o <out dir>]\n", app);
   MESSAGE("-v - print info about images from boot sector\n");
   MESSAGE("-b - retrive boot.img \n");
   MESSAGE("-f - retrive fastboot.img \n");
   MESSAGE("-r - retrieve recovery\n");
-  MESSAGE("-a - retrieve all images\n\n");
+  MESSAGE("-l - retrieve logo\n");
+  MESSAGE("-u - retrieve unknown image\n");
+  MESSAGE("-a - retrieve all known images\n\n");
 
-  MESSAGE("-2 - use the second MBR record in case of divergent copies\n"); 
-  MESSAGE("-i - input file (current: %s)\n", origin); 
-  ERROR  ("-o - existing directory to store the output images (current: %s)\n", odir); 
+  MESSAGE("-2 - use the second MBR record in case of divergent copies\n");
+  MESSAGE("-i - input file (current: %s)\n", origin);
+  ERROR  ("-o - existing directory to store the output images (current: %s)\n", odir);
 }
 
 e_args parse_arg(char *arg1, char *arg2) {
@@ -111,28 +113,31 @@ e_args parse_arg(char *arg1, char *arg2) {
 	 int i;
      for(i=strlen(arg1)-1; i > 0; i--) {
        switch(arg1[i]) {
-         case '2': 
+         case '2':
 		second = 1;
 		break;
-         case 'v': 
+         case 'v':
 		curr |= A_INFO;
 		break;
-         case 'b': 
+         case 'b':
 		curr |= A_BOOT;
 		break;
-         case 'f': 
+         case 'f':
 		curr |= A_FAST;
 		break;
-         case 'r': 
+         case 'r':
 		curr |= A_REC;
 		break;
-         case 'u': 
+         case 'l':
+		curr |= A_LOGO;
+		break;
+         case 'u':
 		curr |= A_UNKNOWN;
 		break;
-         case 'a': 
+         case 'a':
 		curr |= A_ALL;
 		break;
-         case 'i': 
+         case 'i':
 		if (arg2 == NULL) { curr |= A_HELP; break;}
                 if (arg2[0] == '-' && arg2[1] == '\0') {
    			origin = "/dev/stdin";
@@ -141,14 +146,14 @@ e_args parse_arg(char *arg1, char *arg2) {
    			origin = arg2;
 		}
 		return curr;
-         case 'o': 
+         case 'o':
 		if (arg2 == NULL) { curr |= A_HELP; break;}
 		odir = arg2;
 		return curr;
-	 default: 
+	 default:
 		curr |= A_HELP;
 		break;
-       } 
+       }
      }
   }
   return curr;
@@ -173,6 +178,8 @@ char * getImageType(uint32_t image_t) {
         return "boot";
     case T_FASTBOOT:
         return "fastboot";
+    case T_LOGO:
+        return "logo";
     default:
         return "unknown";
   }
@@ -186,20 +193,22 @@ char is_enabled(uint32_t image_t) {
 	return (args & A_BOOT);
     case T_FASTBOOT:
 	return (args & A_FAST);
+    case T_LOGO:
+	return (args & A_LOGO);
     default:
 	return (args & A_UNKNOWN);
   }
 }
 
 
-void printinfo(char * mbr, uint8_t offset) 
+void printinfo(char * mbr, uint8_t offset)
 {
   printf("MBR info (offset 0x%x)\n", offset );
   int i=0;
   do {
     hdr_ent *e = (hdr_ent*) (mbr + sizeof(mainheader) + sizeof(hdr_ent) * i++);
     if (e->start_s == 0xffffffff || ((char*)e) - mbr > MBR_HDR_LEN) { break; }
-    printf("Image %i (%8s), start %8u, length %8u\n", i, getImageType(e->image_type), le32toh(e->start_s), le32toh(e->sectors_t)); 
+    printf("Image %i (%8s:%2x), start %8u, length %8u\n", i, getImageType(e->image_type), e->image_type, le32toh(e->start_s), le32toh(e->sectors_t));
   } while (1);
 }
 
@@ -218,15 +227,15 @@ char process_image(hdr_ent *e, FILE *finput)
     if (!foutput)
 	ERROR("ERROR: failed to open output %s\n", filename);
     MESSAGE("Saving %s image in %s\n", getImageType(e->image_type), filename);
-    hdr = (struct bootheader *)malloc(SECTOR);    
+    hdr = (struct bootheader *)malloc(SECTOR);
     memcpy(hdr, header512, SECTOR);
     hdr->sectors_t = e->sectors_t;
     hdr->image_type = e->image_type;
     hdr->xor56 = calc_sum(hdr);
-    
-    if (fwrite(hdr, SECTOR, 1, foutput) != 1) 
+
+    if (fwrite(hdr, SECTOR, 1, foutput) != 1)
 		ERROR("ERROR: failed to write output header\n");
-   
+
     fflush(foutput);
 	if (fseek(finput, start, SEEK_SET) == -1)
 		ERROR("ERROR: failed to seek in input\n");
@@ -250,7 +259,7 @@ char process_image(hdr_ent *e, FILE *finput)
   }
 }
 
-void process_mbr(char * mbr, uint8_t offset, FILE *input) 
+void process_mbr(char * mbr, uint8_t offset, FILE *input)
 {
   int i=0;
   do {
@@ -292,7 +301,7 @@ int main(int argc, char *argv[])
 		printinfo(mbr, MBR_HDR_LEN);
 	}
 
-	if (memcmp(mbr, mbr+MBR_HDR_LEN, MBR_HDR_LEN - 8)) 
+	if (memcmp(mbr, mbr+MBR_HDR_LEN, MBR_HDR_LEN - 8))
 		  MESSAGE("WARNING: divergent MBR image records, using the %s one\n", (second)?"second":"first");
 	process_mbr(mbr, (second)?MBR_HDR_LEN:0, forigin);
 	return 0;

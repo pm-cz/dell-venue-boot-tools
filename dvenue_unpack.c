@@ -38,9 +38,12 @@ int main(int argc, char *argv[])
 	char *origin;
 	char *bzImage;
 	char *ramdisk;
+	char *bootloader=NULL;
+	char *cmdline=NULL;
 	FILE *forigin;
 	FILE *fbzImage;
 	FILE *framdisk;
+	FILE *fother;
 	uint32_t bzImageLen;
 	uint32_t ramdiskLen;
 	uint32_t missing;
@@ -50,18 +53,18 @@ int main(int argc, char *argv[])
 	struct bootheader tmphdr;
 	size_t size;
 
-	if (argc != 4)
-		ERROR("Usage: %s <image to unpack> <bzImage out> <ramdisk out>\n", argv[0]);
+	if (argc < 4 || argc > 6)
+		ERROR("Usage: %s <image to unpack> <bzImage out> <ramdisk out> [<bootloader out> [<cmdline out>]]\n", argv[0]);
 
 	origin = argv[1];
 	bzImage = argv[2];
 	ramdisk = argv[3];
+	if (argc > 4) { bootloader=argv[4]; }
+	if (argc > 5) { cmdline=argv[5]; }
 
-	forigin = fopen(origin, "r");
-	fbzImage = fopen(bzImage, "w");
-	framdisk = fopen(ramdisk, "w");
-	if (!forigin || !bzImage || !framdisk)
-		ERROR("ERROR: failed to open origin or output images\n");
+	forigin = fopen(origin, "rb");
+	if (!forigin)
+		ERROR("ERROR: failed to open input image\n");
 
 	if (fread(&tmphdr, sizeof(tmphdr), 1, forigin) != 1)
 		ERROR("ERROR: failed to read file header\n");
@@ -87,10 +90,30 @@ int main(int argc, char *argv[])
 
 	/* Fix different bootloader sizes */
 	offset = bootloader_end(&tmphdr);
+	if (bootloader) {
+		fother=fopen(bootloader, "wb");
+		if (!fother)
+			ERROR("ERROR: failed to open bootloader image\n");
+		fwrite(tmphdr.bootstubStack, 1, BOOTSTUBSTACK_SIZE-offset, fother);
+		fclose(fother);
+	}
+
+	if (cmdline) {
+		fother=fopen(cmdline, "w");
+		if (!fother)
+			ERROR("ERROR: failed to open command line info\n");
+		fprintf(fother, "%s", tmphdr.cmdline);
+		fclose(fother);
+	}
 
 	/* Copy bzImage */
 	if (fseek(forigin, sizeof(struct bootheader)-offset, SEEK_SET) == -1)
 		ERROR("ERROR: failed to seek when copying bzImage\n");
+
+	fbzImage = fopen(bzImage, "wb");
+	framdisk = fopen(ramdisk, "wb");
+	if (!fbzImage || !framdisk)
+		ERROR("ERROR: failed to open ramdisk or kernel image\n");
 
 	missing = bzImageLen;
 	while (missing > 0) {
