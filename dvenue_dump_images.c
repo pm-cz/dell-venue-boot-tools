@@ -168,6 +168,7 @@ void checkHeader(mainheader* mbr)
 void checkEntry(hdr_ent* e)
 {
   if (le32toh(e->magic1) != MAGIC1 || le32toh(e->magic2) != MAGIC2 || le32toh(e->separator) != SEPARATOR) ERROR("Invalid boot record entry\n");
+  if (e->sectors_t == 0) MESSAGE("Empty boot record entry\n");
 }
 
 char * getImageType(uint32_t image_t) {
@@ -208,7 +209,8 @@ void printinfo(char * mbr, uint8_t offset)
   do {
     hdr_ent *e = (hdr_ent*) (mbr + sizeof(mainheader) + sizeof(hdr_ent) * i++);
     if (e->start_s == 0xffffffff || ((char*)e) - mbr > MBR_HDR_LEN) { break; }
-    printf("Image %i (%8s:%2x), start %8u, length %8u\n", i, getImageType(e->image_type), e->image_type, le32toh(e->start_s), le32toh(e->sectors_t));
+    printf("%s %i (%8s:%2x), start %8u, length %8u\n", (e->sectors_t == 0)?"Empty":"Image",
+              i, getImageType(e->image_type), e->image_type, le32toh(e->start_s), le32toh(e->sectors_t));
   } while (1);
 }
 
@@ -222,6 +224,10 @@ char process_image(hdr_ent *e, FILE *finput)
     size_t missing = le32toh(e->sectors_t) * 512;
     struct bootheader * hdr;
 
+    if (e->sectors_t == 0) {
+      MESSAGE("Skipping empty entry\n");
+      return;
+    }
     snprintf(filename, BUFSIZ, "%s/%s.img", odir, getImageType(e->image_type));
     foutput = fopen(filename, "wb");
     if (!foutput)
