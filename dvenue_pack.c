@@ -49,7 +49,7 @@ char get_image_code(char image_t) {
 
 int main(int argc, char *argv[])
 {
-	int img_type=0;
+	int img_type=-1;
 	char *origin;
 	char *bzImage;
 	char *ramdisk;
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 	
 	/* Update OS header */
 	file->sectors_t = htole32(tmp2 / 512 - 1);
-	if (img_type != 0) { file->image_type = img_type; }
+	if (img_type != -1) { file->image_type = img_type; }
 	file->xor56 = calc_sum(file);
 
 	/* Write the patched bootstub to the new image */
