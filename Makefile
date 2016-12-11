@@ -1,6 +1,6 @@
-CFLAGS=-Wall -Wextra -pedantic -std=c99 -D_BSD_SOURCE -march=i586 -m32 -ffunction-sections -fdata-sections -D__BSD_VISIBLE
+CFLAGS=-Wall -Wextra -pedantic -std=c99 -D_BSD_SOURCE -march=i386 -m32 -ffunction-sections -fdata-sections -D__BSD_VISIBLE -D_FILE_OFFSET_BITS=64
 
-LDFLAGS=$(CFLAGS) -march=i586 -m32 -ffunction-sections -fdata-sections 
+LDFLAGS=$(CFLAGS) -march=i386 -m32 -ffunction-sections -fdata-sections 
 DUMPFLAGS=-dead-strip -dead_strip_dylibs -static 
 
 .PHONY: clean
